@@ -7,8 +7,8 @@ coverage/
 *.log
 .DS_Store
 
-test/
-
-tsconfig.build.tsbuildinfo
+*.tsbuildinfo
 
 Remote_Agric_Cooperative_PRD.docx
+
+test/
