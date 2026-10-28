@@ -7,11 +7,12 @@ It is not a completed authentication system or a production launch approval.
 ## Running locally
 
 Copy `.env.example` to `.env` and run `corepack pnpm start:dev`.
-The API listens on `127.0.0.1:3000` by default. The frontend in the sibling
+The API listens on all IPv4 interfaces (`0.0.0.0`) using `PORT` (default 3000),
+so containers and hosting platforms can reach it. Locally, use `http://localhost:<PORT>`.
+The frontend in the sibling
 `remote-agric-cooperative` project runs on port 3001. Origins are exact values,
 without trailing slashes. Use your actual HTTPS frontend origins in production.
 Startup rejects invalid ports, limits, and origins.
-When running in a container, explicitly set `HOST=0.0.0.0` if required.
 
 ## Protections implemented
 

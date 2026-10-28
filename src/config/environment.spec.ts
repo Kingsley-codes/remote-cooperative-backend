@@ -1,11 +1,6 @@
 import { validateEnvironment } from './environment.js';
 
 describe('environment validation', () => {
-  it('defaults to local-only listening', () => {
-    const env = validateEnvironment({});
-    expect(env.HOST).toBe('127.0.0.1');
-  });
-
   it.each([
     { PORT: '0' },
     { RATE_LIMIT_MAX: '-1' },

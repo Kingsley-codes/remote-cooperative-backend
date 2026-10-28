@@ -12,9 +12,6 @@ async function bootstrap() {
   });
   configureApp(app);
   const config = app.get(ConfigService<Environment, true>);
-  await app.listen(
-    config.get('PORT', { infer: true }),
-    config.get('HOST', { infer: true }),
-  );
+  await app.listen(config.get('PORT', { infer: true }), '0.0.0.0');
 }
 await bootstrap();

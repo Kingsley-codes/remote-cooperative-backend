@@ -1,8 +1,5 @@
-import { isIP } from 'node:net';
-
 export interface Environment {
   NODE_ENV: 'development' | 'test' | 'production';
-  HOST: string;
   PORT: number;
   CORS_ORIGINS: string[];
   HTTP_BODY_LIMIT_KB: number;
@@ -68,12 +65,8 @@ export function validateEnvironment(
     }
   }
 
-  const host = text('HOST', '127.0.0.1');
-  if (!isIP(host)) throw new Error('HOST must be an IP address');
-
   return {
     NODE_ENV: nodeEnv as Environment['NODE_ENV'],
-    HOST: host,
     PORT: integer('PORT', 3000, 65535),
     CORS_ORIGINS: [...new Set(origins)],
     HTTP_BODY_LIMIT_KB: integer('HTTP_BODY_LIMIT_KB', 64, 1024),
