@@ -7,10 +7,15 @@ import { validateEnvironment } from './config/environment.js';
 import type { Environment } from './config/environment.js';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { AuthModule } from './auth/auth.module.js';
+import { AdminModule } from './admin/admin.module.js';
 
 @Module({
   imports: [
+    AuthModule,
+    AdminModule,
     ConfigModule.forRoot({
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
       isGlobal: true,
       cache: true,
       validate: validateEnvironment,

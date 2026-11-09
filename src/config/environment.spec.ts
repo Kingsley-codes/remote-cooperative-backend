@@ -10,6 +10,21 @@ describe('environment validation', () => {
     { CORS_ORIGINS: 'https://example.com/path' },
     { NODE_ENV: 'production' },
     { NODE_ENV: 'production', CORS_ORIGINS: 'http://example.com' },
+    {
+      REMOTE_AGRIC_API_URL: 'https://identity.example.com/path',
+      REMOTE_AGRIC_ORIGIN: 'https://remote.example.com',
+    },
+    { REMOTE_AGRIC_API_URL: 'https://identity.example.com' },
+    { GOOGLE_CLIENT_ID: 'partial-configuration' },
+    { ADMIN_MONGO_URI: 'https://example.com' },
+    { ADMIN_MONGO_DB: '../remote-agric' },
+    { ADMIN_SESSION_TTL_HOURS: '0' },
+    { ADMIN_SESSION_TTL_HOURS: '25' },
+    {
+      GOOGLE_CLIENT_ID: 'id',
+      GOOGLE_CLIENT_SECRET: 'secret',
+      GOOGLE_REDIRECT_URI: 'https://evil.example.com/api/auth/google/callback',
+    },
   ])('fails startup for unsafe or invalid settings: %j', (input) => {
     expect(() => validateEnvironment(input)).toThrow();
   });

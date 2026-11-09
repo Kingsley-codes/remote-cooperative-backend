@@ -1,8 +1,8 @@
 # Security baseline
 
-This baseline implements the transport and request protections that can be
-configured before the Remote Agric, MongoDB, and payment integrations exist.
-It is not a completed authentication system or a production launch approval.
+This baseline implements transport and request protections plus Remote Agric
+authentication. See [AUTHENTICATION.md](AUTHENTICATION.md) for the three-project
+deployment setup, session flows, and remaining launch requirements.
 
 ## Running locally
 
@@ -27,10 +27,11 @@ Startup rejects invalid ports, limits, and origins.
   limit of 10 per second, configurable in the environment. Excess requests get
   429 and Retry-After. Forwarded client IP headers are ignored; rate limits use
   the directly connected client's IP address.
-- Every new route is denied with 401 until real identity verification exists.
-  Only the starter `GET /` is explicitly `@Public()`. This guard intentionally
-  rejects all bearer tokens, including otherwise valid ones, until integration.
-  Do not mark member/admin routes public to bypass it during development.
+- Every protected route requires a bearer session verified through Remote
+  Agric's authenticated profile endpoint. It verifies the token, live account
+  status and session version. The starter route and credential exchange routes
+  are explicitly public; member/admin routes must remain protected. API user
+  identity comes from the verified profile, never a client-supplied ID.
 - Global validation rejects unknown DTO fields, invalid values, and implicit
   conversion of DTO properties. Use concrete DTO classes with validation
   decorators, nested validation, length limits, enums, and numeric bounds on
@@ -67,16 +68,19 @@ patch updates, and restore/reconciliation exercises regularly.
 
 ## Controls to implement with domain features
 
-- Remote Agric: verify signature against trusted keys, restrict algorithms,
-  issuer, audience, expiry and required claims, handle handoff state/nonce/replay,
-  establish short-lived sessions, support revocation, and check current eligibility.
+- Remote Agric authentication is verified by the upstream API, which owns JWT
+  signature, algorithm, issuer, audience, expiry and session revocation checks.
+  Google code exchange uses state, nonce and PKCE; signed Google identities are
+  independently verified by both backends. Subscription permissions remain a
+  separate future feature and do not restrict registration.
 - Authorization: derive the member identity from verified credentials; scope
   database reads/writes to that member. Enforce least-privilege roles and explicit
   permissions for approvals, finance, exports, support, and role management.
   Add MFA/step-up verification for high-risk admin and payout actions.
-- Cookies: if authentication uses cookies, implement Secure/HttpOnly/SameSite
-  cookie policies and server-validated CSRF tokens before enabling credentialed
-  CORS. JSON-only bodies and CORS are not substitutes for CSRF protection.
+- Frontend session cookies are host-only, HttpOnly and SameSite=Lax, plus
+  Secure and `__Host-` in production. The frontend's server validates exact
+  Origin on every authentication POST and rejects cross-site requests. Tokens
+  travel server-to-server as bearer credentials; credentialed CORS stays off.
 - MongoDB: least-privilege DB credentials, TLS, at-rest encryption and backups,
   explicit query construction (never spread request objects into queries),
   validated IDs and projections, unique indexes, atomic reservations/transactions,

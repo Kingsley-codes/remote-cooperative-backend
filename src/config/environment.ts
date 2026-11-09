@@ -6,6 +6,14 @@ export interface Environment {
   RATE_LIMIT_TTL_MS: number;
   RATE_LIMIT_MAX: number;
   RATE_LIMIT_BURST_MAX: number;
+  REMOTE_AGRIC_API_URL: string;
+  REMOTE_AGRIC_ORIGIN: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_REDIRECT_URI: string;
+  ADMIN_MONGO_URI: string;
+  ADMIN_MONGO_DB: string;
+  ADMIN_SESSION_TTL_HOURS: number;
 }
 
 export function validateEnvironment(
@@ -65,6 +73,62 @@ export function validateEnvironment(
     }
   }
 
+  const httpUrl = (key: string, fallback = '', originOnly = false) => {
+    const value = text(key, fallback);
+    if (!value) return '';
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new Error(`${key} must be an HTTP(S) URL`);
+    }
+    if (
+      !['http:', 'https:'].includes(url.protocol) ||
+      url.username ||
+      url.password ||
+      url.hash ||
+      url.search ||
+      (originOnly && value !== url.origin) ||
+      (nodeEnv === 'production' && url.protocol !== 'https:')
+    ) {
+      throw new Error(
+        `${key} must be a trusted HTTP(S) URL, HTTPS in production`,
+      );
+    }
+    return value;
+  };
+  const remoteApi = httpUrl('REMOTE_AGRIC_API_URL', '', true);
+  const remoteOrigin = httpUrl('REMOTE_AGRIC_ORIGIN', '', true);
+  const googleRedirect = httpUrl('GOOGLE_REDIRECT_URI');
+  const googleId = text('GOOGLE_CLIENT_ID');
+  const googleSecret = text('GOOGLE_CLIENT_SECRET');
+  if (
+    [googleId, googleSecret, googleRedirect].some(Boolean) &&
+    ![googleId, googleSecret, googleRedirect].every(Boolean)
+  ) {
+    throw new Error('Configure all Google OAuth settings together');
+  }
+  if (
+    googleRedirect &&
+    (!origins.includes(new URL(googleRedirect).origin) ||
+      new URL(googleRedirect).pathname !== '/api/auth/google/callback')
+  ) {
+    throw new Error(
+      'GOOGLE_REDIRECT_URI must use an allowed frontend origin and /api/auth/google/callback',
+    );
+  }
+  if (remoteApi && !remoteOrigin)
+    throw new Error(
+      'REMOTE_AGRIC_ORIGIN is required with REMOTE_AGRIC_API_URL',
+    );
+
+  const adminMongoUri = text('ADMIN_MONGO_URI');
+  if (adminMongoUri && !/^mongodb(?:\+srv)?:\/\//.test(adminMongoUri))
+    throw new Error('ADMIN_MONGO_URI must be a MongoDB connection URI');
+  const adminMongoDb = text('ADMIN_MONGO_DB', 'remote_cooperative');
+  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(adminMongoDb))
+    throw new Error('ADMIN_MONGO_DB must be a valid database name');
+
   return {
     NODE_ENV: nodeEnv as Environment['NODE_ENV'],
     PORT: integer('PORT', 3000, 65535),
@@ -73,5 +137,13 @@ export function validateEnvironment(
     RATE_LIMIT_TTL_MS: integer('RATE_LIMIT_TTL_MS', 60000, 3600000),
     RATE_LIMIT_MAX: integer('RATE_LIMIT_MAX', 100, 10000),
     RATE_LIMIT_BURST_MAX: integer('RATE_LIMIT_BURST_MAX', 10, 1000),
+    REMOTE_AGRIC_API_URL: remoteApi,
+    REMOTE_AGRIC_ORIGIN: remoteOrigin,
+    GOOGLE_CLIENT_ID: googleId,
+    GOOGLE_CLIENT_SECRET: googleSecret,
+    GOOGLE_REDIRECT_URI: googleRedirect,
+    ADMIN_MONGO_URI: adminMongoUri,
+    ADMIN_MONGO_DB: adminMongoDb,
+    ADMIN_SESSION_TTL_HOURS: integer('ADMIN_SESSION_TTL_HOURS', 8, 24),
   };
 }
