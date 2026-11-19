@@ -8,14 +8,13 @@ password, token or database collection is used for admin access.
 In this backend's `.env`, set:
 
 ```dotenv
-ADMIN_MONGO_URI=mongodb://127.0.0.1:27017
-ADMIN_MONGO_DB=remote_cooperative
+MONGO_URI=mongodb://127.0.0.1:27017/remote_cooperative
 ADMIN_SESSION_TTL_HOURS=8
 ```
 
 Use a database belonging to this project. A separate MongoDB deployment/user is
-recommended for isolation; the configured database name is explicit and overrides
-any default database in the URI. Production database credentials should have
+recommended for isolation; the database name is included in the URI. Users and
+admins use separate collections in this same cooperative database. Production database credentials should have
 access only to this project's database. Missing configuration leaves admin login
 unavailable with 503; there are no built-in accounts or default passwords.
 
@@ -51,12 +50,12 @@ requires a valid admin session. Member login continues to route to `/dashboard`.
 - Admin routes must use `@AdminOnly()`. The global authentication guard sends
   these routes to this project's admin verifier. Member routes continue to use
   Remote Agric identity verification. Neither session type grants the other access.
-- The frontend uses a separate host-only HttpOnly admin cookie, SameSite=Lax and
-  Secure with a `__Host-` prefix in production. Same-origin checks protect login
-  and logout POSTs. Browser JavaScript never receives admin session tokens.
+- The backend sets a separate host-only HttpOnly admin cookie, Secure with a
+  `__Host-` prefix in production. Browser requests include credentials. Exact
+  trusted-origin checks protect cookie-authenticated POSTs. Browser JavaScript never receives admin session tokens.
 - Admin login allows five attempts per IP/route per minute, plus the existing
   burst limit. As with member auth, configure shared throttling and trusted
-  client IP handling for your deployment before scaling the frontend proxy.
+  client IP handling for your deployment before scaling behind a reverse proxy.
 
 ## Dashboard previews
 

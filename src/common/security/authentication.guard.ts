@@ -4,6 +4,7 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { sessionToken } from './session.js';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC } from './public.decorator.js';
 import { RemoteAgricService } from '../../auth/remote-agric.service.js';
@@ -31,18 +32,17 @@ export class AuthenticationGuard implements CanActivate {
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: unknown; admin?: unknown }>();
-    const authorization = request.headers.authorization;
-    if (!authorization?.startsWith('Bearer '))
-      throw new UnauthorizedException();
-    if (
+    const admin =
       this.reflector.getAllAndOverride<boolean>(ADMIN_ONLY, [
         context.getHandler(),
         context.getClass(),
-      ])
-    ) {
-      request.admin = await this.admins.identity(authorization.slice(7));
+      ]) ?? false;
+    const token = sessionToken(request, admin);
+    if (!token) throw new UnauthorizedException();
+    if (admin) {
+      request.admin = await this.admins.identity(token);
     } else {
-      request.user = await this.remote.identity(authorization.slice(7));
+      request.user = await this.remote.identity(token);
     }
     return true;
   }

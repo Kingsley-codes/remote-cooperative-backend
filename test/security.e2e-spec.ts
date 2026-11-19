@@ -98,7 +98,7 @@ describe('HTTP security', () => {
     expect(res.headers['strict-transport-security']).toBeUndefined();
   });
 
-  it('allows configured CORS preflights without allowing credentialed cookies', async () => {
+  it('allows credentialed CORS preflights only for configured origins', async () => {
     const res = await request(app.getHttpServer())
       .options('/')
       .set('Origin', 'http://localhost:3001')
@@ -108,7 +108,7 @@ describe('HTTP security', () => {
     expect(res.headers['access-control-allow-origin']).toBe(
       'http://localhost:3001',
     );
-    expect(res.headers['access-control-allow-credentials']).toBeUndefined();
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
   });
 
   it.each([

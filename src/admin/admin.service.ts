@@ -1,7 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes } from 'node:crypto';
-import { AdminStore, type AdminAccount } from './admin.store.js';
+import { AdminStore } from './admin.store.js';
+import type { AdminAccount } from './admin.model.js';
 import { verifyPassword } from './password.js';
 import type { Environment } from '../config/environment.js';
 

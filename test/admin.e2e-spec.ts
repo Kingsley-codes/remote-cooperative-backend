@@ -4,11 +4,8 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { ObjectId } from 'mongodb';
 import request from 'supertest';
 import { AppModule } from '../src/app.module.js';
-import {
-  AdminStore,
-  type AdminAccount,
-  type AdminSession,
-} from '../src/admin/admin.store.js';
+import { AdminStore } from '../src/admin/admin.store.js';
+import type { AdminAccount, AdminSession } from '../src/admin/admin.model.js';
 import { hashPassword } from '../src/admin/password.js';
 import { configureApp } from '../src/config/configure-app.js';
 import { validateEnvironment } from '../src/config/environment.js';
@@ -81,7 +78,9 @@ describe('Independent cooperative admin authentication', () => {
         .post('/admin/auth/login')
         .send(credentials)
         .expect(200)
-    ).body.sessionToken as string;
+    ).headers['set-cookie'][0]
+      .split(';')[0]
+      .split('=')[1] as string;
   }
 
   it('authenticates its own admin without contacting Remote Agric', async () => {
@@ -95,8 +94,12 @@ describe('Independent cooperative admin authentication', () => {
       name: admin.name,
       role: 'admin',
     });
-    expect(response.body.sessionToken).toMatch(/^admin_[\w-]{43}$/);
-    expect(response.body.maxAge).toBe(28800);
+    expect(response.body).not.toHaveProperty('sessionToken');
+    expect(response.headers['set-cookie'][0]).toMatch(
+      /cooperative_admin=admin_[\w-]{43}/,
+    );
+    expect(response.headers['set-cookie'][0]).toContain('Max-Age=28800');
+    expect(response.headers['set-cookie'][0]).toContain('HttpOnly');
     expect(JSON.stringify(response.body)).not.toContain(passwordHash);
     expect([...sessions.keys()][0]).not.toBe(response.body.sessionToken);
     expect(upstream).not.toHaveBeenCalled();
@@ -105,17 +108,20 @@ describe('Independent cooperative admin authentication', () => {
     const token = await login();
     const profile = await request(app.getHttpServer())
       .get('/admin/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .expect(200);
     expect(profile.body.admin.email).toBe(admin.email);
     await request(app.getHttpServer())
       .post('/admin/auth/logout')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .send({})
       .expect(200, { loggedOut: true });
     await request(app.getHttpServer())
       .get('/admin/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .expect(401);
     expect(upstream).not.toHaveBeenCalled();
   });
@@ -150,7 +156,8 @@ describe('Independent cooperative admin authentication', () => {
     const token = await login();
     await request(app.getHttpServer())
       .get('/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .expect(401);
     expect(upstream).not.toHaveBeenCalled();
   });
@@ -160,19 +167,22 @@ describe('Independent cooperative admin authentication', () => {
     session.expiresAt = new Date(Date.now() - 1000);
     await request(app.getHttpServer())
       .get('/admin/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .expect(401);
     session.expiresAt = new Date(Date.now() + 60000);
     admin.active = false;
     await request(app.getHttpServer())
       .get('/admin/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .expect(401);
     admin.active = true;
     admin.sessionVersion++;
     await request(app.getHttpServer())
       .get('/admin/auth/me')
-      .set('Authorization', `Bearer ${token}`)
+      .set('Cookie', `cooperative_admin=${token}`)
+      .set('Origin', 'http://localhost:3001')
       .expect(401);
   });
   it('rejects injected query objects and extra privilege fields', async () => {

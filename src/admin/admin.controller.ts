@@ -1,3 +1,4 @@
+import { sessionToken } from '../common/security/session.js';
 import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { Transform } from 'class-transformer';
@@ -41,6 +42,6 @@ export class AdminController {
   @Post('logout')
   @HttpCode(200)
   logout(@Req() request: Request) {
-    return this.service.logout(request.headers.authorization!.slice(7));
+    return this.service.logout(sessionToken(request, true)!);
   }
 }

@@ -2,12 +2,13 @@ import { ConfigService } from '@nestjs/config';
 import { OAuth2Client } from 'google-auth-library';
 import { AuthService } from './auth.service.js';
 import { RemoteAgricService } from './remote-agric.service.js';
+import type { Environment } from '../config/environment.js';
 
 describe('Google authentication', () => {
-  const config = new ConfigService({
+  const config = new ConfigService<Environment, true>({
     GOOGLE_CLIENT_ID: 'client-id',
     GOOGLE_CLIENT_SECRET: 'client-secret',
-    GOOGLE_REDIRECT_URI: 'http://localhost:3001/api/auth/google/callback',
+    GOOGLE_REDIRECT_URI: 'http://localhost:4000/auth/google/callback',
   });
   const remote = { login: vi.fn() };
   const service = new AuthService(
@@ -31,7 +32,7 @@ describe('Google authentication', () => {
     expect(params.get('nonce')).toBe('nonce');
     expect(params.get('code_challenge_method')).toBe('S256');
     expect(params.get('redirect_uri')).toBe(
-      'http://localhost:3001/api/auth/google/callback',
+      'http://localhost:4000/auth/google/callback',
     );
   });
   it.each([

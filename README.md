@@ -27,6 +27,34 @@
 
 ## Project setup
 
+Set `MONGO_URI` in `.env`, including the cooperative database name, for example
+`mongodb://127.0.0.1:27017/remote_cooperative`. This single database holds `users`,
+`admins`, `admin_sessions`, and future cooperative financial collections. If
+upgrading an existing environment, replace `ADMIN_MONGO_URI` and `ADMIN_MONGO_DB`
+with one `MONGO_URI` pointing to the same database. For Atlas, put the database
+name before the URI's `?` options; preserve any required `authSource` setting.
+
+Remote Agric owns member authentication, passwords, and sessions. Successful
+password/Google login creates or refreshes a local user linked by a unique
+`remoteAgricUserId`. Existing Remote Agric sessions create a local user on their
+next authenticated request if needed. Responses preserve `user.id` as the Remote
+Agric ID and add `user.localUserId` and `user.membershipStatus`.
+
+Local users start with pending membership and no recorded cooperative terms
+acceptance. Authentication does not activate membership or prove investment
+eligibility. After login, call `POST /auth/accept-terms` with the API session cookie
+and `{ "acceptTerms": true, "termsVersion": "1.0" }`. The current version is also
+returned as `user.currentTermsVersion`. This atomically activates a pending
+membership and records `termsVersion` and `termsAcceptedAt`. Repeated acceptance
+preserves the original timestamp, and suspended memberships cannot reactivate
+themselves. Investment eligibility and financial permissions remain separate work.
+Profile refreshes do not overwrite local membership or consent. No member password
+or session token is stored in `users`. Admins authenticate independently against
+the `admins` collection; create them with `pnpm admin:create`.
+
+Database access returns 503 when `MONGO_URI` is missing or the initial connection
+fails. Public routes remain available without a database connection.
+
 ```bash
 $ pnpm install
 ```

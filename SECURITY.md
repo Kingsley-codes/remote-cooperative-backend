@@ -77,10 +77,11 @@ patch updates, and restore/reconciliation exercises regularly.
   database reads/writes to that member. Enforce least-privilege roles and explicit
   permissions for approvals, finance, exports, support, and role management.
   Add MFA/step-up verification for high-risk admin and payout actions.
-- Frontend session cookies are host-only, HttpOnly and SameSite=Lax, plus
-  Secure and `__Host-` in production. The frontend's server validates exact
-  Origin on every authentication POST and rejects cross-site requests. Tokens
-  travel server-to-server as bearer credentials; credentialed CORS stays off.
+- API session cookies are host-only and HttpOnly, with Secure and `__Host-`
+  in production. Cookie-authenticated mutations require an exact trusted Origin.
+  Credentialed CORS is restricted to `CORS_ORIGINS`. Cookies use SameSite=Lax
+  by default; cross-site HTTPS deployments can configure SameSite=None.
+  Login tokens are omitted from JSON and never read by browser JavaScript.
 - MongoDB: least-privilege DB credentials, TLS, at-rest encryption and backups,
   explicit query construction (never spread request objects into queries),
   validated IDs and projections, unique indexes, atomic reservations/transactions,

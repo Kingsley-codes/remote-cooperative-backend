@@ -1,4 +1,5 @@
 import { Transform } from 'class-transformer';
+import { COOPERATIVE_TERMS_VERSION } from '../users/user.model.js';
 import {
   Equals,
   IsEmail,
@@ -15,6 +16,14 @@ export class EmailDto {
   @IsEmail()
   @MaxLength(254)
   email!: string;
+}
+
+export class AcceptTermsDto {
+  @Equals(true)
+  acceptTerms!: boolean;
+
+  @Equals(COOPERATIVE_TERMS_VERSION)
+  termsVersion!: string;
 }
 
 export class LoginDto extends EmailDto {

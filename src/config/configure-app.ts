@@ -1,3 +1,4 @@
+import { BrowserSessionInterceptor } from '../common/security/browser-session.interceptor.js';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -62,7 +63,7 @@ export function configureApp(app: NestExpressApplication): void {
 
   app.enableCors({
     origin: origins,
-    credentials: false,
+    credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
@@ -90,6 +91,22 @@ export function configureApp(app: NestExpressApplication): void {
     next();
   });
 
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (!['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
+      // Cookie-authenticated mutations require an explicitly trusted origin.
+      // Browser login requests must use JSON so cross-origin requests preflight.
+      if (
+        (req.headers.cookie || req.headers['sec-fetch-site']) &&
+        !origins.includes(req.headers.origin ?? '')
+      ) {
+        res.status(403).json({ message: 'Forbidden' });
+        return;
+      }
+    }
+    next();
+  });
+  app.useGlobalInterceptors(new BrowserSessionInterceptor(config));
+
   app.useBodyParser('json', {
     limit: config.get('HTTP_BODY_LIMIT_KB', { infer: true }) * 1024,
     strict: true,
@@ -109,7 +126,7 @@ export function configureApp(app: NestExpressApplication): void {
     }),
   );
 
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new HttpExceptionFilter(config));
   const server = app.getHttpServer();
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;

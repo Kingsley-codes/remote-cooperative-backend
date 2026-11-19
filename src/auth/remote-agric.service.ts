@@ -7,6 +7,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Environment } from '../config/environment.js';
+import { UserStore } from '../users/user.store.js';
+import type { User } from '../users/user.model.js';
+import { COOPERATIVE_TERMS_VERSION } from '../users/user.model.js';
 
 export interface RemoteUser {
   _id: string;
@@ -25,7 +28,10 @@ interface RemoteResponse {
 
 @Injectable()
 export class RemoteAgricService {
-  constructor(private readonly config: ConfigService<Environment, true>) {}
+  constructor(
+    private readonly config: ConfigService<Environment, true>,
+    private readonly users: UserStore,
+  ) {}
 
   async request(path: string, body?: unknown, token?: string) {
     const base = this.config.get('REMOTE_AGRIC_API_URL', { infer: true });
@@ -102,12 +108,20 @@ export class RemoteAgricService {
     const user = data.data?.user;
     if (!user?._id || user.status !== 'active' || !user.isVerified)
       throw new UnauthorizedException();
-    return this.publicUser(user);
+    const local =
+      (await this.users.findByRemoteId(user._id)) ??
+      (await this.users.syncProfile(user._id, user));
+    return this.publicUser(user, local);
   }
 
-  publicUser(user: RemoteUser) {
+  private publicUser(user: RemoteUser, local: User) {
     return {
       id: user._id,
+      localUserId: local._id.toHexString(),
+      membershipStatus: local.membershipStatus,
+      termsAcceptedAt: local.termsAcceptedAt,
+      termsVersion: local.termsVersion,
+      currentTermsVersion: COOPERATIVE_TERMS_VERSION,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -118,6 +132,10 @@ export class RemoteAgricService {
   async login(body: unknown, path = 'auth/login') {
     const { data, sessionToken } = await this.request(path, body);
     if (!sessionToken || !data.data?.user) throw new BadGatewayException();
-    return { sessionToken, user: this.publicUser(data.data.user) };
+    const user = data.data.user;
+    if (!user._id || user.status !== 'active' || !user.isVerified)
+      throw new UnauthorizedException();
+    const local = await this.users.syncProfile(user._id, user);
+    return { sessionToken, user: this.publicUser(user, local) };
   }
 }

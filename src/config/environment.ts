@@ -2,6 +2,8 @@ export interface Environment {
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
   CORS_ORIGINS: string[];
+  APP_ORIGIN: string;
+  COOKIE_SAME_SITE: 'lax' | 'none';
   HTTP_BODY_LIMIT_KB: number;
   RATE_LIMIT_TTL_MS: number;
   RATE_LIMIT_MAX: number;
@@ -11,8 +13,7 @@ export interface Environment {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_REDIRECT_URI: string;
-  ADMIN_MONGO_URI: string;
-  ADMIN_MONGO_DB: string;
+  MONGO_URI: string;
   ADMIN_SESSION_TTL_HOURS: number;
 }
 
@@ -97,6 +98,17 @@ export function validateEnvironment(
     }
     return value;
   };
+  const appOrigin = httpUrl('APP_ORIGIN', origins[0], true);
+  if (!origins.includes(appOrigin))
+    throw new Error('APP_ORIGIN must be in CORS_ORIGINS');
+  const sameSite = text('COOKIE_SAME_SITE', 'lax');
+  if (
+    !['lax', 'none'].includes(sameSite) ||
+    (sameSite === 'none' && nodeEnv !== 'production')
+  )
+    throw new Error(
+      'COOKIE_SAME_SITE must be lax, or none with production HTTPS',
+    );
   const remoteApi = httpUrl('REMOTE_AGRIC_API_URL', '', true);
   const remoteOrigin = httpUrl('REMOTE_AGRIC_ORIGIN', '', true);
   const googleRedirect = httpUrl('GOOGLE_REDIRECT_URI');
@@ -110,11 +122,10 @@ export function validateEnvironment(
   }
   if (
     googleRedirect &&
-    (!origins.includes(new URL(googleRedirect).origin) ||
-      new URL(googleRedirect).pathname !== '/api/auth/google/callback')
+    new URL(googleRedirect).pathname !== '/auth/google/callback'
   ) {
     throw new Error(
-      'GOOGLE_REDIRECT_URI must use an allowed frontend origin and /api/auth/google/callback',
+      'GOOGLE_REDIRECT_URI must use the backend URL and /auth/google/callback',
     );
   }
   if (remoteApi && !remoteOrigin)
@@ -122,17 +133,26 @@ export function validateEnvironment(
       'REMOTE_AGRIC_ORIGIN is required with REMOTE_AGRIC_API_URL',
     );
 
-  const adminMongoUri = text('ADMIN_MONGO_URI');
-  if (adminMongoUri && !/^mongodb(?:\+srv)?:\/\//.test(adminMongoUri))
-    throw new Error('ADMIN_MONGO_URI must be a MongoDB connection URI');
-  const adminMongoDb = text('ADMIN_MONGO_DB', 'remote_cooperative');
-  if (!/^[a-zA-Z0-9_-]{1,64}$/.test(adminMongoDb))
-    throw new Error('ADMIN_MONGO_DB must be a valid database name');
+  const mongoUri = text('MONGO_URI');
+  if (mongoUri) {
+    // MongoClient parses credentials, hosts, and options; require an explicit
+    // database here so an omitted name cannot silently select MongoDB's "test".
+    const database =
+      /^mongodb(?:\+srv)?:\/\/[^/?#]+\/([^?#]+)(?:\?[^#]*)?$/.exec(
+        mongoUri,
+      )?.[1];
+    if (!database || !/^[a-zA-Z0-9_-]{1,64}$/.test(database))
+      throw new Error(
+        'MONGO_URI must be a MongoDB URI including a database name',
+      );
+  }
 
   return {
     NODE_ENV: nodeEnv as Environment['NODE_ENV'],
     PORT: integer('PORT', 3000, 65535),
     CORS_ORIGINS: [...new Set(origins)],
+    APP_ORIGIN: appOrigin,
+    COOKIE_SAME_SITE: sameSite as Environment['COOKIE_SAME_SITE'],
     HTTP_BODY_LIMIT_KB: integer('HTTP_BODY_LIMIT_KB', 64, 1024),
     RATE_LIMIT_TTL_MS: integer('RATE_LIMIT_TTL_MS', 60000, 3600000),
     RATE_LIMIT_MAX: integer('RATE_LIMIT_MAX', 100, 10000),
@@ -142,8 +162,7 @@ export function validateEnvironment(
     GOOGLE_CLIENT_ID: googleId,
     GOOGLE_CLIENT_SECRET: googleSecret,
     GOOGLE_REDIRECT_URI: googleRedirect,
-    ADMIN_MONGO_URI: adminMongoUri,
-    ADMIN_MONGO_DB: adminMongoDb,
+    MONGO_URI: mongoUri,
     ADMIN_SESSION_TTL_HOURS: integer('ADMIN_SESSION_TTL_HOURS', 8, 24),
   };
 }

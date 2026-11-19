@@ -1,9 +1,11 @@
+import { sessionToken } from '../common/security/session.js';
 import { Body, Controller, Get, HttpCode, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '../common/security/public.decorator.js';
 import {
   EmailDto,
+  AcceptTermsDto,
   GoogleDto,
   GoogleStartDto,
   LoginDto,
@@ -13,6 +15,7 @@ import {
 } from './auth.dto.js';
 import { AuthService } from './auth.service.js';
 import { RemoteAgricService } from './remote-agric.service.js';
+import { UserStore } from '../users/user.store.js';
 
 @Controller('auth')
 @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -20,6 +23,7 @@ export class AuthController {
   constructor(
     private readonly remote: RemoteAgricService,
     private readonly auth: AuthService,
+    private readonly users: UserStore,
   ) {}
 
   @Public()
@@ -81,14 +85,24 @@ export class AuthController {
     return { user: req.user };
   }
 
+  @Post('accept-terms')
+  @HttpCode(200)
+  async acceptTerms(
+    @Body() _body: AcceptTermsDto,
+    @Req() req: Request & { user: { id: string } },
+  ) {
+    const user = await this.users.acceptTerms(req.user.id);
+    return {
+      membershipStatus: user.membershipStatus,
+      termsAcceptedAt: user.termsAcceptedAt,
+      termsVersion: user.termsVersion,
+    };
+  }
+
   @Post('logout')
   @HttpCode(200)
   async logout(@Req() req: Request) {
-    await this.remote.request(
-      'auth/logout',
-      {},
-      req.headers.authorization!.slice(7),
-    );
+    await this.remote.request('auth/logout', {}, sessionToken(req)!);
     return { loggedOut: true };
   }
 }
