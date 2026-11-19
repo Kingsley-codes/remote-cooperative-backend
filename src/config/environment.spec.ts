@@ -22,6 +22,7 @@ describe('environment validation', () => {
     { MONGO_URI: 'mongodb://localhost:27017/../remote-agric' },
     { ADMIN_SESSION_TTL_HOURS: '0' },
     { ADMIN_SESSION_TTL_HOURS: '25' },
+    { ADMIN_TOKEN_SECRET: 'too-short' },
     {
       GOOGLE_CLIENT_ID: 'id',
       GOOGLE_CLIENT_SECRET: 'secret',

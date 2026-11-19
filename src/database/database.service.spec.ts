@@ -43,16 +43,11 @@ describe('shared cooperative database', () => {
     expect(mongo.db).toHaveBeenCalledWith();
     expect(database.collection.mock.calls.map(([name]) => name)).toEqual([
       'admins',
-      'admin_sessions',
       'users',
     ]);
     expect(mongo.createIndex).toHaveBeenCalledWith(
       { remoteAgricUserId: 1 },
       { unique: true },
-    );
-    expect(mongo.createIndex).toHaveBeenCalledWith(
-      { expiresAt: 1 },
-      { expireAfterSeconds: 0 },
     );
     await service.onModuleDestroy();
     expect(mongo.close).toHaveBeenCalledOnce();

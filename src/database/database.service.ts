@@ -40,9 +40,6 @@ export class DatabaseService implements OnModuleDestroy {
       await Promise.all([
         db.collection('admins').createIndex({ email: 1 }, { unique: true }),
         db
-          .collection('admin_sessions')
-          .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-        db
           .collection('users')
           .createIndex({ remoteAgricUserId: 1 }, { unique: true }),
       ]);

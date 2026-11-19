@@ -1,6 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  ServiceUnavailableException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHash, randomBytes } from 'node:crypto';
+import { SignJWT, jwtVerify } from 'jose';
+import { ObjectId } from 'mongodb';
 import { AdminStore } from './admin.store.js';
 import type { AdminAccount } from './admin.model.js';
 import { verifyPassword } from './password.js';
@@ -12,8 +17,10 @@ export class AdminService {
     private readonly store: AdminStore,
     private readonly config: ConfigService<Environment, true>,
   ) {}
-  private digest(token: string) {
-    return createHash('sha256').update(token).digest('hex');
+  private signingKey() {
+    const secret = this.config.get('ADMIN_TOKEN_SECRET', { infer: true });
+    if (!secret) throw new ServiceUnavailableException();
+    return new TextEncoder().encode(secret);
   }
   private profile(admin: AdminAccount) {
     return {
@@ -28,30 +35,40 @@ export class AdminService {
     const admin = await this.store.findByEmail(email);
     const matches = await verifyPassword(password, admin?.passwordHash);
     if (!admin || !matches || !admin.active) throw new UnauthorizedException();
-    const sessionToken = `admin_${randomBytes(32).toString('base64url')}`;
     const maxAge =
       this.config.get('ADMIN_SESSION_TTL_HOURS', { infer: true }) * 3600;
-    await this.store.createSession({
-      _id: this.digest(sessionToken),
-      adminId: admin._id,
-      sessionVersion: admin.sessionVersion,
-      expiresAt: new Date(Date.now() + maxAge * 1000),
-    });
+    const sessionToken = `admin_${await new SignJWT({})
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setSubject(admin._id.toHexString())
+      .setIssuer('remote-cooperative-backend')
+      .setAudience('cooperative-admin')
+      .setIssuedAt()
+      .setExpirationTime(`${maxAge}s`)
+      .sign(this.signingKey())}`;
     return { sessionToken, maxAge, admin: this.profile(admin) };
   }
 
   async identity(token: string) {
-    if (!/^admin_[\w-]{43}$/.test(token)) throw new UnauthorizedException();
-    const session = await this.store.findSession(this.digest(token));
-    if (!session || session.expiresAt.getTime() <= Date.now())
+    if (!token.startsWith('admin_') || token.length > 2048)
       throw new UnauthorizedException();
-    const admin = await this.store.findById(session.adminId);
-    if (!admin?.active || admin.sessionVersion !== session.sessionVersion)
+    const key = this.signingKey();
+    let adminId: string;
+    try {
+      const { payload } = await jwtVerify(token.slice(6), key, {
+        algorithms: ['HS256'],
+        typ: 'JWT',
+        issuer: 'remote-cooperative-backend',
+        audience: 'cooperative-admin',
+        requiredClaims: ['sub', 'iat', 'exp'],
+      });
+      if (!payload.sub || !/^[a-f0-9]{24}$/.test(payload.sub))
+        throw new UnauthorizedException();
+      adminId = payload.sub;
+    } catch {
       throw new UnauthorizedException();
+    }
+    const admin = await this.store.findById(new ObjectId(adminId));
+    if (!admin?.active) throw new UnauthorizedException();
     return this.profile(admin);
-  }
-  async logout(token: string) {
-    await this.store.deleteSession(this.digest(token));
-    return { loggedOut: true };
   }
 }

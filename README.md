@@ -29,7 +29,7 @@
 
 Set `MONGO_URI` in `.env`, including the cooperative database name, for example
 `mongodb://127.0.0.1:27017/remote_cooperative`. This single database holds `users`,
-`admins`, `admin_sessions`, and future cooperative financial collections. If
+`admins` and future cooperative financial collections. If
 upgrading an existing environment, replace `ADMIN_MONGO_URI` and `ADMIN_MONGO_DB`
 with one `MONGO_URI` pointing to the same database. For Atlas, put the database
 name before the URI's `?` options; preserve any required `authSource` setting.

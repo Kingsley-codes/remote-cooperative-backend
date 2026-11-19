@@ -15,6 +15,7 @@ export interface Environment {
   GOOGLE_REDIRECT_URI: string;
   MONGO_URI: string;
   ADMIN_SESSION_TTL_HOURS: number;
+  ADMIN_TOKEN_SECRET: string;
 }
 
 export function validateEnvironment(
@@ -147,6 +148,10 @@ export function validateEnvironment(
       );
   }
 
+  const adminTokenSecret = text('ADMIN_TOKEN_SECRET');
+  if (adminTokenSecret && Buffer.byteLength(adminTokenSecret) < 32)
+    throw new Error('ADMIN_TOKEN_SECRET must contain at least 32 bytes');
+
   return {
     NODE_ENV: nodeEnv as Environment['NODE_ENV'],
     PORT: integer('PORT', 3000, 65535),
@@ -164,5 +169,6 @@ export function validateEnvironment(
     GOOGLE_REDIRECT_URI: googleRedirect,
     MONGO_URI: mongoUri,
     ADMIN_SESSION_TTL_HOURS: integer('ADMIN_SESSION_TTL_HOURS', 8, 24),
+    ADMIN_TOKEN_SECRET: adminTokenSecret,
   };
 }

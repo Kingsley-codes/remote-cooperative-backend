@@ -54,7 +54,6 @@ try {
     name,
     passwordHash: await hashPassword(password),
     active: true,
-    sessionVersion: 0,
     createdAt: new Date(),
   });
   console.log('Cooperative admin created. Sign in at /admin/login.');

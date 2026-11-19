@@ -10,6 +10,7 @@ In this backend's `.env`, set:
 ```dotenv
 MONGO_URI=mongodb://127.0.0.1:27017/remote_cooperative
 ADMIN_SESSION_TTL_HOURS=8
+ADMIN_TOKEN_SECRET=<random secret of at least 32 bytes>
 ```
 
 Use a database belonging to this project. A separate MongoDB deployment/user is
@@ -39,14 +40,24 @@ requires a valid admin session. Member login continues to route to `/dashboard`.
 
 - The API exposes `POST /admin/auth/login`, `GET /admin/auth/me` and
   `POST /admin/auth/logout`.
-- Admin passwords are salted and hashed with scrypt. Each login creates a random
-  opaque token; only its SHA-256 digest is stored in `admin_sessions`.
-- Sessions expire after the configured duration (1–24 hours, default 8).
-  Every request rechecks expiry, the current admin's `active` flag and
-  `sessionVersion`. MongoDB's TTL index also cleans up expired session records.
-- Logout deletes the current session. Disabling an admin (`active: false`) or
-  increasing `sessionVersion` revokes access on the next request. A management UI
-  for creating/disabling admins and password recovery is not part of this change.
+- Admin passwords are salted and hashed with scrypt. Login issues a signed JWT
+  with an admin-specific issuer and audience. No admin session records or session
+  versions are stored. Configure `ADMIN_TOKEN_SECRET` with a cryptographically
+  random secret of at least 32 bytes, shared across backend instances. Without
+  it, admin authentication is unavailable. For example, generate one with
+  `node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"`.
+- Tokens expire after the configured duration (1–24 hours, default 8).
+  Every request verifies the signature, issuer, audience and expiry, then checks
+  the current admin account exists and is active.
+- Logout clears the browser cookie. A copied token remains valid until expiry.
+  Disabling an admin (`active: false`) denies access on the next request;
+  re-enabling the account permits any unexpired tokens again. Password changes
+  do not revoke tokens. Rotating `ADMIN_TOKEN_SECRET` invalidates all admin tokens.
+  A management UI for creating/disabling admins and password recovery is not
+  part of this change.
+- Deploying this change requires admins to sign in again. Legacy
+  `admin_sessions` records and `sessionVersion` fields are unused and may be
+  removed from MongoDB separately; the application does not migrate or delete them.
 - Admin routes must use `@AdminOnly()`. The global authentication guard sends
   these routes to this project's admin verifier. Member routes continue to use
   Remote Agric identity verification. Neither session type grants the other access.
