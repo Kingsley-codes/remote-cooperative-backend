@@ -87,6 +87,20 @@ $ pnpm run test:cov
 
 ## Deployment
 
+For the existing Render web service, use:
+
+- Build command: `npm install --include=dev && npm run build`
+- Start command: `npm run start:prod`
+- Runtime environment: `NODE_ENV=production`
+
+The project `.npmrc` also includes development dependencies for npm installs.
+The build needs `@nestjs/cli` and TypeScript from `devDependencies`, even when
+`NODE_ENV=production`. Omitting them causes `nest: not found`. Keep production
+mode enabled for secure session cookies. Use `&&` so a failed dependency install
+stops the build. After changing installation settings, clear Render's build
+cache and deploy again. The running application starts from `dist` without the
+Nest CLI.
+
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
 
 If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
