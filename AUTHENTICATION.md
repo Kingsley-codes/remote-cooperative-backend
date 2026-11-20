@@ -102,6 +102,16 @@ with the cooperative API; only the backend-to-backend transport uses Bearer.
 
 ## Operational notes
 
+For a login 503, inspect server logs immediately before the request's
+`http_error` entry. `remote_agric_unavailable` identifies a missing API URL or
+an outbound transport failure. `database_unavailable` identifies missing
+`MONGO_URI`, connection failure (`stage: connect`), or failed index setup
+(`stage: initialize_indexes`). The fixed `reason` label distinguishes known
+authentication, permission, DNS, timeout, and duplicate-index-data failures;
+unknown driver errors remain redacted. These diagnostics never log connection
+strings, credentials, tokens, or raw driver messages. Set environment variables
+on the deployed service; a local `.env` does not configure the hosted process.
+
 The existing Terms and Privacy dialogs contain provisional information, not
 approved legal documents. The onboarding page labels the existing pilot
 membership/privacy information and records acceptance of its version. Replace

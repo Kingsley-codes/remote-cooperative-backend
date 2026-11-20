@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { DatabaseService } from './database.service.js';
 import type { Environment } from '../config/environment.js';
+import { Logger } from '@nestjs/common';
 
 const mongo = vi.hoisted(() => ({
   connect: vi.fn(),
@@ -31,6 +32,27 @@ describe('shared cooperative database', () => {
     mongo.close.mockResolvedValue(undefined);
     mongo.db.mockReturnValue(database);
     mongo.createIndex.mockResolvedValue('index');
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it('identifies index permission failures in logs without exposing driver details', async () => {
+    const log = vi
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
+    mongo.createIndex.mockRejectedValueOnce({
+      code: 13,
+      message: 'secret URI',
+    });
+    const service = new DatabaseService(
+      new ConfigService<Environment, true>({ MONGO_URI: uri }),
+    );
+    await expect(service.db()).rejects.toThrow('Service Unavailable');
+    expect(log).toHaveBeenCalledExactlyOnceWith({
+      event: 'database_unavailable',
+      stage: 'initialize_indexes',
+      reason: 'permission_denied',
+    });
+    expect(JSON.stringify(log.mock.calls)).not.toContain('secret');
   });
 
   it('shares one connection and selects the URI database for all collections', async () => {

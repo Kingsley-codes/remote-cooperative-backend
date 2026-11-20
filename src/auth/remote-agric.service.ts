@@ -2,6 +2,7 @@ import {
   BadGatewayException,
   HttpException,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -10,6 +11,7 @@ import type { Environment } from '../config/environment.js';
 import { UserStore } from '../users/user.store.js';
 import type { User } from '../users/user.model.js';
 import { COOPERATIVE_TERMS_VERSION } from '../users/user.model.js';
+import { dependencyFailureReason } from '../common/security/dependency-failure.js';
 
 export interface RemoteUser {
   _id: string;
@@ -28,6 +30,7 @@ interface RemoteResponse {
 
 @Injectable()
 export class RemoteAgricService {
+  private readonly logger = new Logger(RemoteAgricService.name);
   constructor(
     private readonly config: ConfigService<Environment, true>,
     private readonly users: UserStore,
@@ -35,7 +38,13 @@ export class RemoteAgricService {
 
   async request(path: string, body?: unknown, token?: string) {
     const base = this.config.get('REMOTE_AGRIC_API_URL', { infer: true });
-    if (!base) throw new ServiceUnavailableException();
+    if (!base) {
+      this.logger.error({
+        event: 'remote_agric_unavailable',
+        reason: 'missing_api_url',
+      });
+      throw new ServiceUnavailableException();
+    }
     let response: Response;
     try {
       response = await fetch(`${base}/api/${path}`, {
@@ -48,7 +57,11 @@ export class RemoteAgricService {
         signal: AbortSignal.timeout(10000),
         redirect: 'error',
       });
-    } catch {
+    } catch (error) {
+      this.logger.error({
+        event: 'remote_agric_unavailable',
+        reason: dependencyFailureReason(error),
+      });
       throw new ServiceUnavailableException();
     }
     // Do not expose upstream cookies, errors, or full user documents to browsers.
