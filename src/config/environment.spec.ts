@@ -1,6 +1,13 @@
 import { validateEnvironment } from './environment.js';
 
 describe('environment validation', () => {
+  it('accepts the Remote Agric API URL without an origin or service secret', () => {
+    expect(
+      validateEnvironment({
+        REMOTE_AGRIC_API_URL: 'https://identity.example.com',
+      }).REMOTE_AGRIC_API_URL,
+    ).toBe('https://identity.example.com');
+  });
   it.each([
     { PORT: '0' },
     { RATE_LIMIT_MAX: '-1' },
@@ -12,9 +19,7 @@ describe('environment validation', () => {
     { NODE_ENV: 'production', CORS_ORIGINS: 'http://example.com' },
     {
       REMOTE_AGRIC_API_URL: 'https://identity.example.com/path',
-      REMOTE_AGRIC_ORIGIN: 'https://remote.example.com',
     },
-    { REMOTE_AGRIC_API_URL: 'https://identity.example.com' },
     { GOOGLE_CLIENT_ID: 'partial-configuration' },
     { MONGO_URI: 'https://example.com' },
     { MONGO_URI: 'mongodb://localhost:27017' },

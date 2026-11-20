@@ -42,12 +42,7 @@ export class RemoteAgricService {
         method: body === undefined ? 'GET' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Cookie: `user_token=${token}` } : {}),
-          ...(body !== undefined
-            ? {
-                Origin: this.config.get('REMOTE_AGRIC_ORIGIN', { infer: true }),
-              }
-            : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(10000),

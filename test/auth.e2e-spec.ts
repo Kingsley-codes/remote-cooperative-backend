@@ -56,7 +56,6 @@ describe('Authentication integration', () => {
       NODE_ENV: 'test',
       CORS_ORIGINS: 'http://localhost:3001',
       REMOTE_AGRIC_API_URL: 'https://identity.example.com',
-      REMOTE_AGRIC_ORIGIN: 'https://remote.example.com',
     });
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(UserStore)
@@ -85,6 +84,8 @@ describe('Authentication integration', () => {
       .expect(202, { requiresVerification: true });
     const [url, init] = upstream.mock.calls[0]!;
     expect(url).toBe('https://identity.example.com/api/auth/register');
+    expect(init!.headers).not.toHaveProperty('Authorization');
+    expect(init!.headers).not.toHaveProperty('Origin');
     expect(JSON.parse(init!.body as string)).toEqual(
       expect.objectContaining({ phone: signup.phone, email: signup.email }),
     );
@@ -146,7 +147,7 @@ describe('Authentication integration', () => {
       .expect(200);
     expect(response.body.user.id).toBe(user._id);
     expect(upstream.mock.calls[0]![1]!.headers).toEqual(
-      expect.objectContaining({ Cookie: `user_token=${token}` }),
+      expect.objectContaining({ Authorization: `Bearer ${token}` }),
     );
     expect(response.body.user).not.toHaveProperty('password');
   });
@@ -227,10 +228,13 @@ describe('Authentication integration', () => {
       .expect(200, { loggedOut: true });
     expect(upstream.mock.calls[1]![1]!.headers).toEqual(
       expect.objectContaining({
-        Origin: 'https://remote.example.com',
-        Cookie: `user_token=${token}`,
+        Authorization: `Bearer ${token}`,
       }),
     );
+    expect(upstream.mock.calls[1]![0]).toBe(
+      'https://identity.example.com/api/auth/logout',
+    );
+    expect(upstream.mock.calls[1]![1]!.headers).not.toHaveProperty('Origin');
   });
   it('fails safely when Google credentials have not been configured', async () => {
     await request(app.getHttpServer())

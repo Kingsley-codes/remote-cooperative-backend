@@ -9,7 +9,6 @@ export interface Environment {
   RATE_LIMIT_MAX: number;
   RATE_LIMIT_BURST_MAX: number;
   REMOTE_AGRIC_API_URL: string;
-  REMOTE_AGRIC_ORIGIN: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_REDIRECT_URI: string;
@@ -111,7 +110,6 @@ export function validateEnvironment(
       'COOKIE_SAME_SITE must be lax, or none with production HTTPS',
     );
   const remoteApi = httpUrl('REMOTE_AGRIC_API_URL', '', true);
-  const remoteOrigin = httpUrl('REMOTE_AGRIC_ORIGIN', '', true);
   const googleRedirect = httpUrl('GOOGLE_REDIRECT_URI');
   const googleId = text('GOOGLE_CLIENT_ID');
   const googleSecret = text('GOOGLE_CLIENT_SECRET');
@@ -129,10 +127,6 @@ export function validateEnvironment(
       'GOOGLE_REDIRECT_URI must use the backend URL and /auth/google/callback',
     );
   }
-  if (remoteApi && !remoteOrigin)
-    throw new Error(
-      'REMOTE_AGRIC_ORIGIN is required with REMOTE_AGRIC_API_URL',
-    );
 
   const mongoUri = text('MONGO_URI');
   if (mongoUri) {
@@ -163,7 +157,6 @@ export function validateEnvironment(
     RATE_LIMIT_MAX: integer('RATE_LIMIT_MAX', 100, 10000),
     RATE_LIMIT_BURST_MAX: integer('RATE_LIMIT_BURST_MAX', 10, 1000),
     REMOTE_AGRIC_API_URL: remoteApi,
-    REMOTE_AGRIC_ORIGIN: remoteOrigin,
     GOOGLE_CLIENT_ID: googleId,
     GOOGLE_CLIENT_SECRET: googleSecret,
     GOOGLE_REDIRECT_URI: googleRedirect,

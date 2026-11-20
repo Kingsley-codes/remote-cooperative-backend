@@ -9,15 +9,17 @@ updated product requirement takes precedence.
 
 Deploy the changes in all three projects:
 
-1. `remote-backend`: adds `POST /api/auth/google/token`. Set
-   `GOOGLE_COOPERATIVE_CLIENT_ID` to the cooperative's Google OAuth client ID.
+1. `remote-backend`: accepts user Bearer tokens on existing authenticated user
+   routes, including profile and logout. No service secret is required.
+   For `POST /api/auth/google/token`, set `GOOGLE_COOPERATIVE_CLIENT_ID` to the
+   cooperative's Google OAuth client ID.
    Existing MongoDB, JWT and email settings remain necessary. This endpoint
    independently verifies Google's token and provisions ordinary Remote Agric
    users in the existing user collection. It never grants an active investment.
 2. `remote-cooperative-backend`: set `REMOTE_AGRIC_API_URL` to the Remote Agric
-   API origin, without `/api`. Set `REMOTE_AGRIC_ORIGIN` to an exact frontend
-   origin already allowed by Remote Agric's `FRONTEND_URL` or
-   `FRONTEND_LOCALHOST`; logout checks it. Set `CORS_ORIGINS` to cooperative
+   API origin, without `/api`. Remove the obsolete `REMOTE_AGRIC_ORIGIN` and
+   `REMOTE_AGRIC_SERVICE_SECRET` settings.
+   Set `CORS_ORIGINS` to cooperative
    frontend origins. Configure the three Google settings together:
    `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`.
    Set `MONGO_URI` to this project's MongoDB URI including its database name,
@@ -41,6 +43,20 @@ Both backends need network access to Google; the cooperative API needs access to
 Remote Agric. Google test-mode consent screens require configured test users.
 
 ## Flows
+
+The cooperative backend calls Remote Agric's existing `/api/auth/*` and
+`/api/user/profile` endpoints. For profile and logout it sends the user's existing
+token as `Authorization: Bearer <user token>`. Remote Agric validates the token's
+signature, account status and session version. Explicit Bearer authentication
+does not require a browser Origin. Cookie-authenticated browser mutations retain
+their origin checks. An invalid Authorization header is rejected rather than
+falling back to a cookie. Existing endpoint rate limits remain in place.
+
+No additional server credential or endpoint is needed. Remove any previously
+added `COOPERATIVE_SERVICE_SECRET` from Remote Agric. Deploy Remote Agric's Bearer
+support first, then deploy the cooperative backend. Use HTTPS in production. The
+frontend needs no configuration change and continues using an HttpOnly cookie
+with the cooperative API; only the backend-to-backend transport uses Bearer.
 
 - Email signup forwards validated name, email, international phone number and
   matching strong passwords to Remote Agric's existing registration endpoint.
