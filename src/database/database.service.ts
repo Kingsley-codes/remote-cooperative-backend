@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { type Db, MongoClient } from 'mongodb';
+import { type Db, type ClientSession, MongoClient } from 'mongodb';
 import type { Environment } from '../config/environment.js';
 import { dependencyFailureReason } from '../common/security/dependency-failure.js';
 
@@ -25,6 +25,17 @@ export class DatabaseService implements OnModuleDestroy {
       });
     }
     return this.ready;
+  }
+
+  // Financial writes span a domain record and its ledger entry. A replica set
+  // (including Atlas) is required; never fall back to partial writes.
+  async atomic<T>(
+    work: (db: Db, session: ClientSession) => Promise<T>,
+  ): Promise<T> {
+    const db = await this.db();
+    return this.client!.withSession((session) =>
+      session.withTransaction(() => work(db, session)),
+    );
   }
 
   private async connect(): Promise<Db> {
@@ -49,6 +60,25 @@ export class DatabaseService implements OnModuleDestroy {
       const db = client.db();
       stage = 'initialize_indexes';
       await Promise.all([
+        db
+          .collection('contributions')
+          .createIndex({ reference: 1 }, { unique: true }),
+        db
+          .collection('contributions')
+          .createIndex({ memberId: 1, type: 1, createdAt: -1 }),
+        db
+          .collection('transactions')
+          .createIndex({ reference: 1 }, { unique: true }),
+        db
+          .collection('transactions')
+          .createIndex({ memberId: 1, idempotencyKey: 1 }, { unique: true }),
+        db
+          .collection('transactions')
+          .createIndex({ memberId: 1, createdAt: -1 }),
+        db.collection('loans').createIndex({ memberId: 1, createdAt: -1 }),
+        db
+          .collection('loanEligibility')
+          .createIndex({ memberId: 1 }, { unique: true }),
         db.collection('admins').createIndex({ email: 1 }, { unique: true }),
         db
           .collection('users')

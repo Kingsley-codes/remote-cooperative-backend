@@ -1,4 +1,10 @@
 export interface Environment {
+  PAYSTACK_SECRET_KEY: string;
+  PAYSTACK_TRANSFERS_ENABLED: string;
+  LOAN_FLAT_FEE_BPS: string;
+  LOAN_MAX_MONTHS: number;
+  LOAN_TERMS_VERSION: string;
+  LOAN_TERMS_URL: string;
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
   CORS_ORIGINS: string[];
@@ -147,6 +153,27 @@ export function validateEnvironment(
     throw new Error('ADMIN_TOKEN_SECRET must contain at least 32 bytes');
 
   return {
+    PAYSTACK_SECRET_KEY: (() => {
+      const key = text('PAYSTACK_SECRET_KEY');
+      if (key && !/^sk_(test|live)_[A-Za-z0-9]+$/.test(key))
+        throw new Error('PAYSTACK_SECRET_KEY must be a Paystack secret key');
+      return key;
+    })(),
+    PAYSTACK_TRANSFERS_ENABLED: (() => {
+      const enabled = text('PAYSTACK_TRANSFERS_ENABLED', 'false');
+      if (!['true', 'false'].includes(enabled))
+        throw new Error('PAYSTACK_TRANSFERS_ENABLED must be true or false');
+      return enabled;
+    })(),
+    LOAN_FLAT_FEE_BPS: (() => {
+      const rate = text('LOAN_FLAT_FEE_BPS');
+      if (rate && (!/^\d+$/.test(rate) || Number(rate) > 10000))
+        throw new Error('LOAN_FLAT_FEE_BPS must be between 0 and 10000');
+      return rate;
+    })(),
+    LOAN_MAX_MONTHS: integer('LOAN_MAX_MONTHS', 12, 60),
+    LOAN_TERMS_VERSION: text('LOAN_TERMS_VERSION'),
+    LOAN_TERMS_URL: httpUrl('LOAN_TERMS_URL'),
     NODE_ENV: nodeEnv as Environment['NODE_ENV'],
     PORT: integer('PORT', 3000, 65535),
     CORS_ORIGINS: [...new Set(origins)],

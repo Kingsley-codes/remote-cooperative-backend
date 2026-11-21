@@ -145,6 +145,109 @@ Then follow the [setup guide](https://docs.nestjs.com/observability/sdk) - it ta
 
 The free plan needs no payment details and covers 300,000 events a month. You can also browse the [live demo](https://www.observe-demo.nestjs.com/dashboard) first - the whole dashboard over a busy service's data, with nothing to install.
 
+## Contributions, payments and loans
+
+Financial records use three domain collections: `contributions` (a `long_term`
+or `short_term` plan), `transactions` (collections, repayments, withdrawals and
+disbursements), and `loans` (principal, fee, repayment progress, decisions and
+schedule). Amounts are integer **kobo**, in NGN. There is no new payment SDK or
+separate service deployment.
+
+### Setup
+
+1. Use MongoDB Atlas or a MongoDB **replica set**. Financial writes use database
+   transactions and intentionally fail rather than partially write on standalone
+   MongoDB. Existing user/admin collections are retained; indexes initialize on
+   the first database connection.
+2. Set `PAYSTACK_SECRET_KEY` in `.env` using the placeholders in `.env.example`.
+   Start with a test key. Hosted checkout requires no frontend public key.
+3. Register `https://YOUR-BACKEND/finance/paystack/webhook` in Paystack's dashboard.
+   `APP_ORIGIN` must be the actual frontend origin. Callback navigation goes to
+   `/dashboard?view=Transactions`; the backend verifies the payment independently.
+4. For withdrawals and loan payouts, activate Paystack transfers, disable transfer
+   OTP in its dashboard, maintain provider liquidity, and set
+   `PAYSTACK_TRANSFERS_ENABLED=true`. Until then, collection payments still work
+   and the UI explains that payouts are unavailable. The cooperative currently
+   absorbs provider collection/transfer fees; the member fee is zero.
+5. Publish approved loan terms at `LOAN_TERMS_URL`, set `LOAN_TERMS_VERSION`,
+   `LOAN_FLAT_FEE_BPS` (500 = a one-time 5% fee, 0 = explicitly fee-free) and
+   `LOAN_MAX_MONTHS`. Blank pricing/version/URL keeps applications disabled.
+   Repayment installments begin monthly from confirmed disbursement; rounding
+   preserves the exact total in kobo.
+6. In the admin Loans screen, verify the member's current Remote Agric investment
+   evidence, record its source and set a maximum request no greater than that
+   verified investment value. Assessments expire in 24 hours. The identity API
+   currently has no trusted investment-valuation contract, so this is an audited
+   staff assessment; it does not invent an upstream endpoint or eligibility rate.
+
+### API
+
+Authenticated member routes are under `/finance`; admin routes under
+`/admin/finance` require an admin session. A member-supplied `memberId` cannot
+override the authenticated member's scope.
+
+| Method and route | Purpose |
+| --- | --- |
+| `GET /finance/summary` | Confirmed contributions, savings availability, withdrawals, loan totals, aggregate pool capital |
+| `GET /finance/contributions` | Contribution records, filtered by `type`, status, reference search and dates |
+| `POST /finance/contributions` | `{ type, amount }`, with `Idempotency-Key`; returns hosted checkout URL |
+| `GET /finance/transactions` | Unified personal payment ledger |
+| `POST /finance/payments/:reference/verify` | Authoritative collection/repayment verification |
+| `GET /finance/banks` | Nigerian payout banks |
+| `GET /finance/destination` | Payout availability, verified masked account, fee and timing |
+| `POST /finance/destination` | Verify `{ accountNumber, bankCode }` against the member's name |
+| `POST /finance/withdrawals` | `{ amount }`, with `Idempotency-Key`; atomically reserve available savings and initiate payout |
+| `POST /finance/payouts/:reference/verify` | Verify payout completion independently of the browser |
+| `GET /finance/eligibility` | Current investment assessment and published pricing |
+| `GET /finance/loans` | Applications, decisions, balances and repayment schedules |
+| `POST /finance/loans` | `{ amount, months, purpose, consent, termsVersion }` |
+| `POST /finance/loans/:id/repay` | `{ amount }`, with `Idempotency-Key`; reserve repayment capacity and open checkout |
+
+Admin routes provide `GET summary`, `contributions`, `transactions` and `loans`,
+with additional `memberId` and reconciliation filters. All lists return 20 rows
+per page, `total`, status totals and an `asOf` timestamp. `from` and `to` are
+inclusive calendar dates in Africa/Lagos; `page` is one-based.
+
+Admin mutations are `POST /admin/finance/eligibility`,
+`POST /admin/finance/loans/:id/decision` (`{ decision: "approve" | "reject", reason }`),
+and `POST /admin/finance/loans/:id/disburse`. Payout verification uses
+`POST /admin/finance/payouts/:reference/verify`; pending payout retries use
+`POST /admin/finance/payouts/:reference/retry` with a decision reason. Loan
+decisions, eligibility assessments, disbursement initiation and payout retries
+are audited. Approval preserves the requested principal and accepted pricing;
+approval alone never creates an active loan.
+
+### Reconciliation and product boundaries
+
+Paystack signatures cover the exact raw webhook body. A collection must match
+the persisted reference, amount, currency and payer email. Confirmation and
+domain updates are atomic and conditional, so repeated callbacks cannot credit
+money twice. Pending repayments reserve repayment capacity; pending withdrawals
+reserve savings. Provider timeouts keep reservations intact. A payout retry uses
+its **original** provider reference and cannot create a second transfer.
+
+Abandoned but resumable checkouts remain pending. Members can continue checkout
+or verify its state in record details. Failed payments do not add balances;
+only verified terminal failure releases a reservation. Reversals and unexpected
+late-success states are flagged `needs_review`, preserving completed history;
+automatic refunds, chargeback allocation and manual adjustment posting are not
+implemented. Investigate these exceptions against Paystack before correcting
+the ledger; never issue a replacement payout for an ambiguous timeout.
+
+Pool asset value is read only from an approved `poolValuations` record
+(`status: "approved"`, integer-kobo `assetValue`, `valuedAt`, optional `note`).
+Without an approved allocation rule, estimated member share stays unavailable.
+There is no invented yield or automated collateral recovery. The long-term
+five-year minimum is disclosed; precise lock-in start/release dates remain
+governed by the final accepted terms. No long-term withdrawal flow is enabled.
+
+Tests use mocked provider/database boundaries; run a Paystack test-mode pilot
+against a replica-set database to validate real webhook delivery, simultaneous
+withdrawals and reconciliation before enabling live credentials. Provider docs:
+[collections](https://paystack.com/docs/payments/accept-payments/),
+[webhooks](https://paystack.com/docs/payments/webhooks/),
+[transfers](https://paystack.com/docs/transfers/single-transfers/).
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:

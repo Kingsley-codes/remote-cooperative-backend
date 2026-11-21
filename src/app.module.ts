@@ -10,10 +10,12 @@ import { AppService } from './app.service.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AdminModule } from './admin/admin.module.js';
 import { DatabaseModule } from './database/database.module.js';
+import { FinanceModule } from './finance/finance.module.js';
 
 @Module({
   imports: [
     DatabaseModule,
+    FinanceModule,
     AuthModule,
     AdminModule,
     ConfigModule.forRoot({
