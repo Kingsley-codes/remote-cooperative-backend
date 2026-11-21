@@ -4,7 +4,6 @@ export interface Environment {
   LOAN_FLAT_FEE_BPS: string;
   LOAN_MAX_MONTHS: number;
   LOAN_TERMS_VERSION: string;
-  LOAN_TERMS_URL: string;
   NODE_ENV: 'development' | 'test' | 'production';
   PORT: number;
   CORS_ORIGINS: string[];
@@ -173,7 +172,6 @@ export function validateEnvironment(
     })(),
     LOAN_MAX_MONTHS: integer('LOAN_MAX_MONTHS', 12, 60),
     LOAN_TERMS_VERSION: text('LOAN_TERMS_VERSION'),
-    LOAN_TERMS_URL: httpUrl('LOAN_TERMS_URL'),
     NODE_ENV: nodeEnv as Environment['NODE_ENV'],
     PORT: integer('PORT', 3000, 65535),
     CORS_ORIGINS: [...new Set(origins)],

@@ -232,9 +232,39 @@ describe('financial payment integrity', () => {
     );
     expect(schedule.reduce((sum, row) => sum + row.amount, 0)).toBe(10001);
   });
-  it('fails closed until pricing and a public loan terms URL are configured', () => {
+  it('keeps applications disabled when loan policy is unconfigured', () => {
     expect(fixture().service.policy().enabled).toBe(false);
   });
+  it.each([{ LOAN_FLAT_FEE_BPS: '500' }, { LOAN_TERMS_VERSION: '1.0' }])(
+    'keeps applications disabled with incomplete policy %j',
+    (config) => {
+      const service = new FinanceService(
+        {} as DatabaseService,
+        {} as PaystackService,
+        new ConfigService(config),
+      );
+      expect(service.policy().enabled).toBe(false);
+    },
+  );
+  it.each(['500', '0'])(
+    'enables applications with fee %s and a terms version without a terms URL',
+    (rate) => {
+      const service = new FinanceService(
+        {} as DatabaseService,
+        {} as PaystackService,
+        new ConfigService({
+          LOAN_FLAT_FEE_BPS: rate,
+          LOAN_TERMS_VERSION: '1.0',
+        }),
+      );
+      expect(service.policy()).toEqual({
+        enabled: true,
+        flatFeeBps: Number(rate),
+        maxMonths: 12,
+        termsVersion: '1.0',
+      });
+    },
+  );
 });
 
 describe('Paystack webhook authentication', () => {

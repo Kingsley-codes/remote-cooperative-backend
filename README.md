@@ -169,9 +169,11 @@ separate service deployment.
    `PAYSTACK_TRANSFERS_ENABLED=true`. Until then, collection payments still work
    and the UI explains that payouts are unavailable. The cooperative currently
    absorbs provider collection/transfer fees; the member fee is zero.
-5. Publish approved loan terms at `LOAN_TERMS_URL`, set `LOAN_TERMS_VERSION`,
+5. Display approved loan terms in the frontend. Set `LOAN_TERMS_VERSION`,
    `LOAN_FLAT_FEE_BPS` (500 = a one-time 5% fee, 0 = explicitly fee-free) and
-   `LOAN_MAX_MONTHS`. Blank pricing/version/URL keeps applications disabled.
+   `LOAN_MAX_MONTHS`. Blank pricing/version keeps applications disabled.
+   The frontend submits consent and the displayed terms version; the backend
+   validates the version and records it with the acceptance time.
    Repayment installments begin monthly from confirmed disbursement; rounding
    preserves the exact total in kobo.
 6. In the admin Loans screen, verify the member's current Remote Agric investment

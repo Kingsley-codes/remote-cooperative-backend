@@ -69,13 +69,11 @@ export class FinanceService {
   policy() {
     const rate = this.config.get<string>('LOAN_FLAT_FEE_BPS') ?? '';
     const version = this.config.get<string>('LOAN_TERMS_VERSION') ?? '';
-    const termsUrl = this.config.get<string>('LOAN_TERMS_URL') ?? '';
     return {
-      enabled: rate !== '' && version !== '' && termsUrl !== '',
+      enabled: rate !== '' && version !== '',
       flatFeeBps: Number(rate),
       maxMonths: Number(this.config.get('LOAN_MAX_MONTHS') ?? 12),
       termsVersion: version,
-      termsUrl,
     };
   }
 
@@ -517,7 +515,7 @@ export class FinanceService {
     const { policy, snapshot } = await this.eligibility(user.localUserId);
     if (!policy.enabled || !snapshot)
       throw new ForbiddenException(
-        'Verified investment eligibility and published loan terms are required.',
+        'Verified investment eligibility and configured loan pricing and terms version are required.',
       );
     if (
       !dto.consent ||
