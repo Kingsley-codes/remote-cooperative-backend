@@ -163,7 +163,7 @@ separate service deployment.
    Start with a test key. Hosted checkout requires no frontend public key.
 3. Register `https://YOUR-BACKEND/finance/paystack/webhook` in Paystack's dashboard.
    `APP_ORIGIN` must be the actual frontend origin. Callback navigation goes to
-   `/dashboard?view=Transactions`; the backend verifies the payment independently.
+   `/dashboard/transactions`; the backend verifies the payment independently.
 4. For withdrawals and loan payouts, activate Paystack transfers, disable transfer
    OTP in its dashboard, maintain provider liquidity, and set
    `PAYSTACK_TRANSFERS_ENABLED=true`. Until then, collection payments still work

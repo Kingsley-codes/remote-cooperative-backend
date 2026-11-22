@@ -318,7 +318,7 @@ export class FinanceService {
       amount: transaction.amount,
       currency: 'NGN',
       reference: transaction.reference,
-      callback_url: `${this.config.get<string>('APP_ORIGIN')}/dashboard?view=Transactions`,
+      callback_url: `${this.config.get<string>('APP_ORIGIN')}/dashboard/transactions`,
       metadata: {
         category: transaction.category,
         recordId: transaction.linkedId,
