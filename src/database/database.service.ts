@@ -61,6 +61,14 @@ export class DatabaseService implements OnModuleDestroy {
       stage = 'initialize_indexes';
       await Promise.all([
         db
+          .collection('financeSettings')
+          .createIndex({ key: 1 }, { unique: true }),
+        ...['contributions', 'transactions', 'loans'].map((name) =>
+          db
+            .collection(name)
+            .createIndex({ id: 1 }, { unique: true, sparse: true }),
+        ),
+        db
           .collection('contributions')
           .createIndex({ reference: 1 }, { unique: true }),
         db

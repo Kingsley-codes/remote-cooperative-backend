@@ -8,6 +8,7 @@
   "license": "UNLICENSED",
   "type": "module",
   "scripts": {
+    "migrate:finance": "node --env-file=.env migrations/finance-records.mjs",
     "admin:create": "pnpm build && node --env-file=.env scripts/create-admin.mjs",
     "build": "nest build",
     "deploy": "nest deploy",

@@ -1,5 +1,6 @@
 import {
   Body,
+  BadRequestException,
   Controller,
   Get,
   Headers,
@@ -15,6 +16,10 @@ import { AdminOnly } from '../admin/admin.decorator.js';
 import { Public } from '../common/security/public.decorator.js';
 import { FinanceService, paymentKey } from './finance.service.js';
 import {
+  FinancePolicyDto,
+  PoolValuationDto,
+  ReportDto,
+  MembershipDto,
   BankAccountDto,
   ContributionDto,
   DecisionDto,
@@ -33,6 +38,20 @@ export class FinanceController {
     private readonly service: FinanceService,
     private readonly payouts: PayoutService,
   ) {}
+  @Get('records/:kind/:id') detail(
+    @Req() req: MemberRequest,
+    @Param('kind') kind: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.detail(recordKind(kind), id, req.user.localUserId);
+  }
+  @Post('transactions/:id/report') report(
+    @Req() req: MemberRequest,
+    @Param('id') id: string,
+    @Body() dto: ReportDto,
+  ) {
+    return this.service.report(id, dto, req.user.localUserId);
+  }
   @Get('banks') banks() {
     return this.payouts.banks();
   }
@@ -125,6 +144,44 @@ export class AdminFinanceController {
     private readonly service: FinanceService,
     private readonly payouts: PayoutService,
   ) {}
+  @Get('policy') policy() {
+    return this.service.policy();
+  }
+  @Post('policy') savePolicy(
+    @Req() req: Request & { admin: { id: string } },
+    @Body() dto: FinancePolicyDto,
+  ) {
+    return this.service.savePolicy(dto, req.admin.id);
+  }
+  @Post('valuations') valuation(
+    @Req() req: Request & { admin: { id: string } },
+    @Body() dto: PoolValuationDto,
+  ) {
+    return this.service.saveValuation(dto, req.admin.id);
+  }
+  @Get('members') members(@Query() query: Record<string, string>) {
+    return this.service.members(query);
+  }
+  @Post('members/:id/status') membership(
+    @Req() req: Request & { admin: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: MembershipDto,
+  ) {
+    return this.service.membership(id, dto, req.admin.id);
+  }
+  @Get('records/:kind/:id') detail(
+    @Param('kind') kind: string,
+    @Param('id') id: string,
+  ) {
+    return this.service.detail(recordKind(kind), id);
+  }
+  @Post('transactions/:id/report') report(
+    @Req() req: Request & { admin: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: ReportDto,
+  ) {
+    return this.service.report(id, dto, undefined, req.admin.id);
+  }
   @Post('loans/:id/disburse') disburse(
     @Req() req: Request & { admin: { id: string } },
     @Param('id') id: string,
@@ -176,4 +233,10 @@ export class AdminFinanceController {
   ) {
     return this.service.verify(reference);
   }
+}
+
+function recordKind(kind: string): 'contributions' | 'transactions' | 'loans' {
+  if (kind !== 'contributions' && kind !== 'transactions' && kind !== 'loans')
+    throw new BadRequestException('Invalid record type');
+  return kind;
 }

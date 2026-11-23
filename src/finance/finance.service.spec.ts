@@ -21,21 +21,22 @@ const member: MemberIdentity = {
 function fixture(category: Transaction['category'] = 'long_term') {
   const transaction: Transaction = {
     _id: new ObjectId(),
+    id: 'TRX-0123456789',
     memberId: member.localUserId,
     email: member.email,
     category,
-    direction: 'in',
     amount: 10000,
     currency: 'NGN',
     reference: 'coop_12345678-1234-1234-1234-123456789012',
-    linkedId: new ObjectId().toHexString(),
+    loanid: 'LOA-0123456789',
     idempotencyKey: 'payment-request-key',
     status: 'pending',
     reconciliation: 'unmatched',
     createdAt: new Date(),
   };
   const loan = {
-    _id: objectId(transaction.linkedId),
+    _id: new ObjectId(),
+    id: transaction.loanid,
     totalDue: 10000,
     repaidAmount: 0,
     reservedRepayment: 10000,
@@ -94,7 +95,13 @@ function fixture(category: Transaction['category'] = 'long_term') {
   };
   const db = {
     collection: vi.fn(
-      (name: string) => ({ transactions, contributions, loans })[name],
+      (name: string) =>
+        ({
+          transactions,
+          contributions,
+          loans,
+          financeSettings: { findOne: async () => null },
+        })[name],
     ),
   };
   const database = {
@@ -232,32 +239,40 @@ describe('financial payment integrity', () => {
     );
     expect(schedule.reduce((sum, row) => sum + row.amount, 0)).toBe(10001);
   });
-  it('keeps applications disabled when loan policy is unconfigured', () => {
-    expect(fixture().service.policy().enabled).toBe(false);
+  it('keeps applications disabled when loan policy is unconfigured', async () => {
+    expect((await fixture().service.policy()).enabled).toBe(false);
   });
   it.each([{ LOAN_FLAT_FEE_BPS: '500' }, { LOAN_TERMS_VERSION: '1.0' }])(
     'keeps applications disabled with incomplete policy %j',
-    (config) => {
+    async (config) => {
       const service = new FinanceService(
-        {} as DatabaseService,
+        {
+          db: async () => ({
+            collection: () => ({ findOne: async () => null }),
+          }),
+        } as unknown as DatabaseService,
         {} as PaystackService,
         new ConfigService(config),
       );
-      expect(service.policy().enabled).toBe(false);
+      expect((await service.policy()).enabled).toBe(false);
     },
   );
   it.each(['500', '0'])(
     'enables applications with fee %s and a terms version without a terms URL',
-    (rate) => {
+    async (rate) => {
       const service = new FinanceService(
-        {} as DatabaseService,
+        {
+          db: async () => ({
+            collection: () => ({ findOne: async () => null }),
+          }),
+        } as unknown as DatabaseService,
         {} as PaystackService,
         new ConfigService({
           LOAN_FLAT_FEE_BPS: rate,
           LOAN_TERMS_VERSION: '1.0',
         }),
       );
-      expect(service.policy()).toEqual({
+      expect(await service.policy()).toEqual({
         enabled: true,
         flatFeeBps: Number(rate),
         maxMonths: 12,

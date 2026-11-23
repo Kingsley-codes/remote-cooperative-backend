@@ -7,6 +7,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   farmerID: string;
+  phone?: string;
 }
 
 // Cooperative data only. Passwords and authentication tokens belong to Remote Agric.

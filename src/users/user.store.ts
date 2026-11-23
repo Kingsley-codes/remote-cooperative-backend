@@ -26,6 +26,7 @@ export class UserStore {
         firstName: profile.firstName,
         lastName: profile.lastName,
         farmerID: profile.farmerID,
+        ...(profile.phone ? { phone: profile.phone } : {}),
         updatedAt: now,
       },
       $setOnInsert: {

@@ -19,6 +19,7 @@ export interface RemoteUser {
   firstName: string;
   lastName: string;
   farmerID: string;
+  phone?: string;
   status: string;
   isVerified: boolean;
 }

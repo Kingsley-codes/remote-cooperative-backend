@@ -277,3 +277,11 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+## Dashboard finance update
+
+Run `pnpm migrate:finance` against the intended database before starting this API version. Pause financial writes during the migration and deploy the matching frontend and backend together. The idempotent migration assigns `CON-`, `LOA-`, and `TRX-` IDs, replaces legacy transaction links, and removes stored direction and checkout URLs without changing provider references or MongoDB primary keys. It stops if a related financial record is missing.
+
+Admin loan pricing and duration settings are on Loans; changes require a new terms version. Existing loans retain their original fee and duration. Long-term Contributions accepts approved net pool valuations and dates. Estimates use a snapshot of each member's proportion of confirmed capital at approval, rounded down to kobo; they do not trigger payments.
+
+Cooperative suspension is local to this database and is checked on every authenticated member request. It never changes the Remote Agric account. Payment provider IDs, verified payout recipient tokens, and masked destination snapshots are retained for reconciliation and safe payout retries.

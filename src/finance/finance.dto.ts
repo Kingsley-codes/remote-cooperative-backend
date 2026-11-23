@@ -37,3 +37,22 @@ export class BankAccountDto {
   @Matches(/^\d{10}$/) accountNumber!: string;
   @Matches(/^\d{3,10}$/) bankCode!: string;
 }
+
+export class FinancePolicyDto {
+  @IsInt() @Min(0) @Max(10000) flatFeeBps!: number;
+  @IsInt() @Min(1) @Max(60) maxMonths!: number;
+  @IsString() @Length(1, 100) termsVersion!: string;
+  @IsString() @Length(5, 1000) reason!: string;
+}
+export class PoolValuationDto {
+  @IsInt() @Min(0) @Max(1000000000000) assetValue!: number;
+  @Matches(/^\d{4}-\d{2}-\d{2}$/) valuedAt!: string;
+  @IsString() @Length(5, 1000) note!: string;
+}
+export class ReportDto {
+  @IsString() @Length(10, 2000) reason!: string;
+}
+export class MembershipDto {
+  @IsIn(['active', 'suspended']) status!: 'active' | 'suspended';
+  @IsString() @Length(5, 1000) reason!: string;
+}

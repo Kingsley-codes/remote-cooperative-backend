@@ -14,6 +14,7 @@ import {
   objectId,
   repaymentSchedule,
 } from './finance.service.js';
+import { recordId } from './record-id.js';
 import { PaystackService } from './paystack.service.js';
 import type { BankAccountDto } from './finance.dto.js';
 import type { Loan, MemberIdentity, Transaction } from './finance.model.js';
@@ -165,14 +166,13 @@ export class PayoutService {
         );
       const record: Transaction = {
         _id: new ObjectId(),
+        id: recordId('TRX'),
         memberId: user.localUserId,
         email: user.email,
         category: 'withdrawal',
-        direction: 'out',
         amount,
         currency: 'NGN',
         reference: `coop_${randomUUID()}`,
-        linkedId: user.localUserId,
         idempotencyKey: key,
         status: 'pending',
         reconciliation: 'unmatched',
@@ -211,14 +211,14 @@ export class PayoutService {
         );
       const record: Transaction = {
         _id: new ObjectId(),
+        id: recordId('TRX'),
         memberId: loan.memberId,
         email: user.email,
         category: 'loan_disbursement',
-        direction: 'out',
         amount: loan.amount,
         currency: 'NGN',
         reference: `coop_${randomUUID()}`,
-        linkedId: id,
+        loanid: loan.id,
         idempotencyKey: `disburse_${id}_${randomUUID()}`,
         status: 'pending',
         reconciliation: 'unmatched',
@@ -351,7 +351,7 @@ export class PayoutService {
         ) {
           const loan = await db
             .collection<Loan>('loans')
-            .findOne({ _id: objectId(transaction.linkedId) }, { session });
+            .findOne({ id: transaction.loanid }, { session });
           if (!loan) throw new ConflictException('Loan not found');
           await db.collection<Loan>('loans').updateOne(
             { _id: loan._id },

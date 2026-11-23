@@ -1,5 +1,6 @@
 import {
   CanActivate,
+  ForbiddenException,
   ExecutionContext,
   Injectable,
   UnauthorizedException,
@@ -42,7 +43,12 @@ export class AuthenticationGuard implements CanActivate {
     if (admin) {
       request.admin = await this.admins.identity(token);
     } else {
-      request.user = await this.remote.identity(token);
+      const user = await this.remote.identity(token);
+      if (user.membershipStatus === 'suspended')
+        throw new ForbiddenException(
+          'Your cooperative membership is suspended. Contact support.',
+        );
+      request.user = user;
     }
     return true;
   }

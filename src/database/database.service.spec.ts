@@ -64,6 +64,10 @@ describe('shared cooperative database', () => {
     expect(mongo.construct).toHaveBeenCalledExactlyOnceWith(uri);
     expect(mongo.db).toHaveBeenCalledWith();
     expect(database.collection.mock.calls.map(([name]) => name)).toEqual([
+      'financeSettings',
+      'contributions',
+      'transactions',
+      'loans',
       'contributions',
       'contributions',
       'transactions',

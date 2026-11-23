@@ -4,6 +4,7 @@ export type PaymentStatus = 'pending' | 'successful' | 'failed' | 'reversed';
 export type ContributionType = 'long_term' | 'short_term';
 export interface Contribution {
   _id: ObjectId;
+  id: string;
   memberId: string;
   type: ContributionType;
   amount: number; // Integer kobo throughout the financial domain.
@@ -16,27 +17,28 @@ export interface Contribution {
 }
 export interface Transaction {
   _id: ObjectId;
+  id: string;
   memberId: string;
   email: string;
   category:
     ContributionType | 'loan_repayment' | 'loan_disbursement' | 'withdrawal';
-  direction: 'in' | 'out';
   amount: number;
   currency: 'NGN';
   reference: string;
-  linkedId: string;
+  contributionid?: string;
+  loanid?: string;
   idempotencyKey: string;
   status: PaymentStatus;
   reconciliation: 'unmatched' | 'matched' | 'needs_review';
   createdAt: Date;
   paidAt?: Date;
-  checkoutUrl?: string;
   providerId?: string;
   recipientCode?: string;
   destination?: string;
 }
 export interface Loan {
   _id: ObjectId;
+  id: string;
   memberId: string;
   amount: number;
   fee: number;
